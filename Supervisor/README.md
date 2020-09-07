@@ -1,2 +1,2 @@
-# Blinky con freeRTOS y sAPI. 
+# Programa de supervisor inicial hecho en FRTOS
 
