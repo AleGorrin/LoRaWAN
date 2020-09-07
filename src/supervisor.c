@@ -1,4 +1,4 @@
-/*==================[inlcusiones]============================================*/
+/*=======================================[inlcusiones]============================================*/
 
 #include "FreeRTOSConfig.h"								// Includes de FreeRTOS
 #include "tipos.h"
@@ -6,7 +6,7 @@
 #include "task.h"
 #include "semphr.h"
 #include "sapi.h"										// sAPI header
-/*===============================[definiciones de datos internos]==============================*/
+/*===============================[definiciones de datos internos]=================================*/
 
 gpioMap_t teclas[] = {TEC3,TEC4};
 gpioMap_t leds  [] = {LED2, LED3};
@@ -15,27 +15,27 @@ gpioMap_t leds  [] = {LED2, LED3};
 
 tecla_led_t tecla_led_config[N_TECLAS];
 
-/*===============================[definiciones de datos externos]==============================*/
+/*===============================[definiciones de datos externos]=================================*/
 
 DEBUG_PRINT_ENABLE;
 
-/*============================[declaraciones de funciones internas]=========================*/
+/*============================[declaraciones de funciones internas]===============================*/
 
 bool_t tecla_led_tarea_init(void);
 bool_t tecla_led_tareas_crear(void);
 extern bool_t tension = 0;
 
-/*============================[declaraciones de funciones externas]=========================*/
+/*============================[declaraciones de funciones externas]===============================*/
 
-/*==============================[Prototipo de funcion de la tarea]==========================*/
+/*==============================[Prototipo de funcion de la tarea]================================*/
 
 void tarea_tecla( void* taskParmPtr );
 void tarea_led( void* taskParmPtr );
 void supervisor( void* taskParmPtr );
-void potenciometro( void* taskParmPtr );
+void sensor_pwm( void* taskParmPtr );
 void informar( void* taskParmPtr );
 
-/*======================================[funcion principal]=================================*/
+/*======================================[funcion principal]=======================================*/
 
 bool_t tecla_led_tarea_init(void)						//Creacion de tareas_LED
 {
@@ -45,7 +45,7 @@ bool_t tecla_led_tarea_init(void)						//Creacion de tareas_LED
 		tecla_led_config[i].tecla = teclas[i];
 		tecla_led_config[i].led = leds[i];
 		tecla_led_config[i].sem_tec_pulsada = xSemaphoreCreateBinary();
-		tecla_led_config[i].mutex		   = xSemaphoreCreateMutex();
+		tecla_led_config[i].mutex		    = xSemaphoreCreateMutex();
 	}
 	return TRUE;
 }
@@ -83,7 +83,7 @@ bool_t tecla_led_tareas_crear(void)
 
 int main(void)
 {
-   // ---------------------------------- CONFIGURACIONES ---------------------------------------
+   // -------------------------------------- CONFIGURACIONES --------------------------------------------
    boardConfig();										// Inicializar y configurar la plataforma
 
    debugPrintConfigUart( UART_USB, 115200 );			// UART for debug messages
@@ -109,7 +109,7 @@ int main(void)
       );
 
       xTaskCreate(
-         potenciometro,              					// Funcion de tarea que monitorea el potenciometro
+         sensor_pwm,              						// Funcion de tarea que monitorea un sensor pwm
          (const char *)"myTask",     					// Nombre de la tarea como String amigable para el usuario
          configMINIMAL_STACK_SIZE*2, 					// Cantidad de stack de la tarea
          0,                          					// Parametros de tarea
@@ -132,7 +132,7 @@ int main(void)
 
    vTaskStartScheduler();						// Iniciar scheduler
 
-   // ------------------------------------ REPETIR POR SIEMPRE -----------------------------------
+   // ------------------------------------ REPETIR POR SIEMPRE -------------------------------------------
    while( TRUE ) {
       // Si cae en este while 1 significa que no pudo iniciar el scheduler
    }
@@ -143,22 +143,22 @@ int main(void)
    return 0;
 }
 
-/*==============================[definiciones de funciones internas]=============================*/
+/*==============================[definiciones de funciones internas]======================================*/
 
-/*==============================[definiciones de funciones externas]=============================*/
+/*==============================[definiciones de funciones externas]======================================*/
 
 // Implementacion de funcion de la tarea
-void supervisor( void* taskParmPtr )									// Implementacion de funcion del Supervisor
+void supervisor( void* taskParmPtr )										// Implementacion de funcion del Supervisor
 {
-   // ------------------------------------ CONFIGURACIONES ----------------------------------------
+   // -------------------------------------------- CONFIGURACIONES ----------------------------------------
    gpioWrite( LED1, ON );
    vTaskDelay( 1000 / portTICK_RATE_MS );
    gpioWrite( LED1, OFF );
 
-   portTickType xPeriodicity =  5000 / portTICK_RATE_MS;				// Tarea periodica cada 5000 ms
+   portTickType xPeriodicity =  5000 / portTICK_RATE_MS;					// Tarea periodica cada 5000 ms
    portTickType xLastWakeTime = xTaskGetTickCount();
 
-   // ---------------------------------- REPETIR POR SIEMPRE --------------------------------------
+   // ------------------------------------------ REPETIR POR SIEMPRE --------------------------------------
    while(TRUE) {
 
 	   vTaskDelay( 50 / portTICK_RATE_MS );
@@ -171,9 +171,9 @@ void supervisor( void* taskParmPtr )									// Implementacion de funcion del Su
    vTaskDelete(NULL);
 }
 
-void potenciometro( void* taskParmPtr )
+void sensor_pwm( void* taskParmPtr )
 {
-	// ---------------------------------- CONFIGURACIONES -----------------------------------------
+	// ------------------------------------------ CONFIGURACIONES -----------------------------------------
 
 	pwmConfig( 0, PWM_ENABLE );												// Inicializar UART_USB a 115200 baudios
 	pwmConfig( PWM7, PWM_ENABLE_OUTPUT );
@@ -187,7 +187,7 @@ void potenciometro( void* taskParmPtr )
 
 	portTickType xPeriodicity =  3000 / portTICK_RATE_MS;
 
-	// --------------------------------- REPETIR POR SIEMPRE -----------------------------------------
+	// -------------------------------------- REPETIR POR SIEMPRE -----------------------------------------
 	while(TRUE) {
 
 		uint16_t b = 300;
@@ -199,7 +199,7 @@ void potenciometro( void* taskParmPtr )
 		vTaskDelay( 50 / portTICK_RATE_MS );
 		if (muestra < 300){
 			vTaskDelay( 2000 / portTICK_RATE_MS );
-			uartWriteString( UART_USB, "Valor del potenciometro bajo: " );	// Envío la primer parte del mnesaje a la Uart
+			uartWriteString( UART_USB, "Valor del sensor pwm bajo: " );		// Envío la primer parte del mnesaje a la Uart
 			vTaskDelay( 50 / portTICK_RATE_MS );
 			uartWriteString( UART_USB, uartBuff );							// Enviar muestra y Enter
 			vTaskDelay( 50 / portTICK_RATE_MS );
@@ -213,7 +213,7 @@ void tarea_led( void* taskParmPtr )
 	tecla_led_t* config = (tecla_led_t*) taskParmPtr;
 	TickType_t diferencia;
 	bool_t tension = 0;
-   // ----------------------------------- REPETIR POR SIEMPRE ---------------------------------------
+   // ---------------------------------------- REPETIR POR SIEMPRE ---------------------------------------
    while(TRUE) {
 
 	   xSemaphoreTake(config->sem_tec_pulsada, portMAX_DELAY );
@@ -221,7 +221,7 @@ void tarea_led( void* taskParmPtr )
 	   if (config->tecla == TEC3)
 		   tension = !tension;
 
-	   xSemaphoreTake(config->mutex, portMAX_DELAY);				// Se establece como seccion critica
+	   xSemaphoreTake(config->mutex, portMAX_DELAY);						// Se establece como seccion critica
 
 	   if (config->tecla == TEC3)
 	   {
@@ -233,7 +233,7 @@ void tarea_led( void* taskParmPtr )
 		   //tension =  !tension;
 	   }
 
-	   xSemaphoreGive(config->mutex);								// Se cierra la seccion critica
+	   xSemaphoreGive(config->mutex);										// Se cierra la seccion critica
 
 	   gpioWrite(config->led, ON);
 	   vTaskDelay( diferencia );
@@ -244,13 +244,13 @@ void tarea_led( void* taskParmPtr )
 
 void tarea_tecla( void* taskParmPtr )
 {
-   // ------------------------------------- CONFIGURACIONES -----------------------------------------
+   // ----------------------------------------- CONFIGURACIONES -----------------------------------------
 
 	tecla_led_t* config = (tecla_led_t*) taskParmPtr;
 
 	fsmButtonInit(config);
 
-   // ----------------------------------- REPETIR POR SIEMPRE ---------------------------------------
+   // --------------------------------------- REPETIR POR SIEMPRE ---------------------------------------
    while(TRUE) {
 	   fsmButtonUpdate( config );
 	   vTaskDelay( 1 / portTICK_RATE_MS );
@@ -258,25 +258,25 @@ void tarea_tecla( void* taskParmPtr )
    vTaskDelete(NULL);
 }
 
-void informar( void* taskParmPtr )									// Implementacion de funcion del Supervisor
+void informar( void* taskParmPtr )										// Implementacion de funcion del Supervisor
 {
-   // ------------------------------------- CONFIGURACIONES -----------------------------------------
+   // ----------------------------------------- CONFIGURACIONES -----------------------------------------
 	TickType_t diferencia = *((TickType_t*)taskParmPtr);
 
 	bool_t tension;
 	uint16_t muestra;
 
-	pwmConfig( 0, PWM_ENABLE );										// Inicializar UART_USB a 115200 baudios
+	pwmConfig( 0, PWM_ENABLE );											// Inicializar UART_USB a 115200 baudios
 	pwmConfig( PWM7, PWM_ENABLE_OUTPUT );
 
-	adcConfig( ADC_ENABLE );										// Inicializar AnalogIO
-	dacConfig( DAC_ENABLE );
+	adcConfig( ADC_ENABLE );											// Inicializar AnalogIO
+	dacConfig( DAC_ENABLE );	
 
 	static char uartBuff[10];
 	muestra = adcRead( CH1 );
-	muestra = adcRead( CH1 );										// Leo la Entrada Analogica AI0 - ADC0 CH1
+	muestra = adcRead( CH1 );											// Leo la Entrada Analogica AI0 - ADC0 CH1
 	vTaskDelay( 50 / portTICK_RATE_MS );
-	itoa( muestra, uartBuff, 10 ); 									// Conversión de muestra entera a ascii con base decimal
+	itoa( muestra, uartBuff, 10 ); 										// Conversión de muestra entera a ascii con base decimal
 
 	if ((tension == 0) && (muestra > 300) ){
 		debugPrintlnString( "Todos los estados se encuentran estables" );
